@@ -143,15 +143,58 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .wtotal b{font-variant-numeric:tabular-nums;font-size:17px}
 .werr{color:var(--neg);font-size:13px;margin:0}
 
+.hright{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.acct{display:flex;align-items:center;gap:10px;font-size:13px;min-width:0}
+.acct .who{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.btn.sm{padding:6px 12px;font-size:13px}
+.syncst{font-size:12px;color:var(--muted);white-space:nowrap}
+.syncst.error{color:var(--neg)}
+.authwrap{min-height:100%;display:grid;place-items:center;padding-block:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.authcard{width:min(400px,100%);background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:28px 24px;display:flex;flex-direction:column;gap:16px}
+.authcard .brand{justify-content:center}
+.authsub{margin:-6px 0 0;text-align:center;color:var(--muted);font-size:14px}
+.aseg{width:100%}.aseg button{flex:1}
+.authcard form{display:flex;flex-direction:column;gap:12px}
+.authcard input.t{font-size:15px;padding:10px 12px}
+.ablock{width:100%;padding:11px 14px;font-size:15px}
+.amsg{margin:0;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--warn-bg);color:var(--warn-ink)}
+.amsg.ok{background:var(--chip);color:var(--chip-ink)}
+.alink{border:0;background:none;color:var(--felt);font-weight:600;cursor:pointer;padding:4px;align-self:center;font-size:14px}
+.alink.muted{color:var(--muted);font-weight:500}
+.alink:hover{text-decoration:underline}
+.aor{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
+html,body{height:100%}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
-<div class="wrap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/dist/umd/supabase.js"></script>
+<div id="authView" class="authwrap" hidden>
+  <div class="authcard">
+    <div class="brand"><span class="suit">♠</span>Pokerly</div>
+    <p class="authsub" id="aSub"></p>
+    <div class="seg aseg" id="aTabs"><button type="button" data-amode="signin">Sign in</button><button type="button" data-amode="signup">Create account</button></div>
+    <form id="aForm" novalidate>
+      <label class="f" id="aEmailWrap">Email<input class="t" id="aEmail" type="email" autocomplete="email" required></label>
+      <label class="f" id="aPassWrap">Password<input class="t" id="aPass" type="password" autocomplete="current-password" required></label>
+      <p class="amsg" id="aMsg" hidden></p>
+      <button class="btn primary ablock" id="aSubmit" type="submit">Sign in</button>
+    </form>
+    <button class="alink" id="aForgot" type="button">Forgot password?</button>
+    <button class="alink" id="aBack" type="button" hidden>← Back to sign in</button>
+    <div id="aOAuth" hidden><div class="aor">or</div><button class="btn ablock" id="aGoogle" type="button">Continue with Google</button></div>
+    <button class="alink muted" id="aGuest" type="button">Use without an account</button>
+  </div>
+</div>
+<div class="wrap" id="app" hidden>
   <header class="top">
     <div class="brand"><span class="suit">♠</span>Pokerly</div>
-    <nav class="tabs">
-      <button data-tab="game" class="on">Current game</button>
-      <button data-tab="history">History <span id="histCount"></span></button>
-    </nav>
+    <div class="hright">
+      <div class="acct" id="acct"></div>
+      <nav class="tabs">
+        <button data-tab="game" class="on">Current game</button>
+        <button data-tab="history">History <span id="histCount"></span></button>
+      </nav>
+    </div>
   </header>
 
   <!-- GAME VIEW -->
@@ -193,7 +236,7 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
   <!-- HISTORY VIEW -->
   <section id="historyView" hidden>
     <div class="card actions">
-      <div style="flex:1;color:var(--muted);font-size:13px">Games are saved in this browser. Copy a backup now and then and keep it somewhere safe, in case browser data is cleared.</div>
+      <div style="flex:1;color:var(--muted);font-size:13px" id="histNote">Games are saved in this browser. Copy a backup now and then and keep it somewhere safe, in case browser data is cleared.</div>
       <button class="btn" id="exportBtn">Copy backup</button>
       <button class="btn" id="importBtn">Import backup</button>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -214,7 +257,8 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 <div class="modal" id="modal" hidden><div class="mbox" role="dialog" aria-modal="true"><p id="mMsg"></p><textarea id="mText" hidden spellcheck="false"></textarea><div class="actions" id="mBtns"></div></div></div>
 
 <script>
-const LS_CUR='pokerSettle.current', LS_HIST='pokerSettle.history', LS_MODE='pokerSettle.mode';
+const G_CUR='pokerSettle.current', G_HIST='pokerSettle.history', LS_MODE='pokerSettle.mode';
+let LS_CUR=G_CUR, LS_HIST=G_HIST;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -228,7 +272,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 
 const DEFAULT_MAX=200, LS_MAX='pokerSettle.lastMax';
 function newGame(players,max){return {id:uid(),name:'',date:localDate(),players:players||[],entries:{},maxPerHand:max||DEFAULT_MAX,dirty:false}}
-let state=load(LS_CUR,null)||newGame(['Dayal','Shri','Shash','Deek'].map(n=>({id:uid(),name:n})),load(LS_MAX,null));
+let state=newGame([],DEFAULT_MAX);
 let mode=load(LS_MODE,'simplified');
 let undoStack=[];
 let resultsShown=false, resultsStale=false;
@@ -263,7 +307,7 @@ function compute(g){
 }
 
 /* ---------- persistence ---------- */
-function saveCur(){store(LS_CUR,state)}
+function saveCur(){store(LS_CUR,state);pushCur()}
 function getHist(){return load(LS_HIST,[])}
 function changed(){
   state.dirty=true; saveCur();
@@ -467,6 +511,7 @@ $('#saveHist').onclick=()=>{
   const i=hist.findIndex(h=>h.id===rec.id);
   if(i>=0)hist[i]=rec; else hist.push(rec);
   store(LS_HIST,hist); state.name=rec.name; state.dirty=false; saveCur(); renderMeta(); renderHistCount();
+  cloudSaveGames([rec]);
   toast(i>=0?'History updated':'Saved to history');
 };
 $('#newGame').onclick=async()=>{
@@ -511,15 +556,15 @@ $('#hlist').addEventListener('click',async e=>{
   if(d){
     const g=getHist().find(h=>h.id===d.dataset.del);
     if(!(await askConfirm(`Delete "${g.name}" from history? This can't be undone.`,'Delete',true)))return;
-    store(LS_HIST,getHist().filter(h=>h.id!==g.id)); renderHistory(); renderHistCount();
+    store(LS_HIST,getHist().filter(h=>h.id!==g.id)); renderHistory(); renderHistCount(); cloudDeleteGame(g.id);
   }
 });
 function importGames(raw){
   const data=JSON.parse(raw), games=Array.isArray(data)?data:data.games;
   if(!Array.isArray(games))throw 0;
-  const hist=getHist(); let added=0;
-  games.forEach(g=>{if(g&&g.id&&Array.isArray(g.players)&&g.entries&&!hist.some(h=>h.id===g.id)){hist.push(g);added++}});
-  store(LS_HIST,hist); renderHistory(); renderHistCount(); toast(`Imported ${added} game${added===1?'':'s'}`);
+  const hist=getHist(), fresh=[];
+  games.forEach(g=>{if(g&&g.id&&Array.isArray(g.players)&&g.entries&&!hist.some(h=>h.id===g.id)){hist.push(g);fresh.push(g)}});
+  const added=fresh.length; store(LS_HIST,hist); cloudSaveGames(fresh); renderHistory(); renderHistCount(); toast(`Imported ${added} game${added===1?'':'s'}`);
 }
 $('#exportBtn').onclick=()=>{
   const json=JSON.stringify({app:'poker-settle',version:1,exportedAt:new Date().toISOString(),games:getHist()});
@@ -651,6 +696,200 @@ let showTotals=load(LS_TOT,true);
 function applyTotals(){$('.gridwrap').classList.toggle('no-totals',!showTotals);const b=$('#toggleTotals');b.textContent=showTotals?'Hide totals':'Show totals';b.setAttribute('aria-pressed',String(showTotals))}
 $('#toggleTotals').onclick=()=>{showTotals=!showTotals;store(LS_TOT,showTotals);applyTotals()};
 let toastT; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
-function renderAll(){applyTotals();renderMeta();renderPlayers();renderGrid();renderResults();renderHistCount();$('#undo').disabled=!undoStack.length}
-renderAll();
+function renderAll(){renderAcct();applyTotals();renderMeta();renderPlayers();renderGrid();renderResults();renderHistCount();$('#undo').disabled=!undoStack.length}
+/* ---------- accounts (Supabase) ---------- */
+const SUPABASE_URL='https://jjexawwthbpzcthddtkw.supabase.co';
+const SUPABASE_KEY='sb_publishable_zlmIwmfyVhv9W8ufsPBZdg_bRPzHcCF';
+const GOOGLE_ENABLED=false;   // turn on after Google is set up in Supabase
+const GUEST_FLAG='pokerly.guest';
+const SITE=location.origin+location.pathname;
+let sb=null, user=null, guest=false, recovering=false, aMode='signin';
+try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){sb=null}
+
+function useNamespace(u){
+  if(u){LS_CUR='pokerly.'+u.id+'.current';LS_HIST='pokerly.'+u.id+'.history'}
+  else{LS_CUR=G_CUR;LS_HIST=G_HIST}
+}
+const starterPlayers=()=>['Player 1','Player 2','Player 3','Player 4'].map(n=>({id:uid(),name:n}));
+function loadLocalState(){
+  state=load(LS_CUR,null)||newGame(guest?['Dayal','Shri','Shash','Deek'].map(n=>({id:uid(),name:n})):starterPlayers(),load(LS_MAX,null));
+  undoStack=[];resultsShown=false;resultsStale=false;
+}
+function showApp(){$('#authView').hidden=true;$('#app').hidden=false}
+function renderAcct(){
+  const el=$('#acct'); if(!el)return;
+  if(user)el.innerHTML=`<span class="who" title="${esc(user.email||'')}">${esc(user.email||'Signed in')}</span><span class="syncst" id="syncSt"></span><button class="btn sm" id="signOut">Sign out</button>`;
+  else el.innerHTML=`<span class="who">Not signed in</span><button class="btn sm" id="signInBtn">Sign in</button>`;
+  $('#histNote').textContent=user?'Games are saved to your account and show up on any device where you sign in.':'Games are saved in this browser only. Sign in to keep them in an account, or copy a backup now and then.';
+  setSync(syncState);
+}
+document.addEventListener('click',async e=>{
+  if(e.target.id==='signOut'){
+    e.target.disabled=true;
+    if(curSaved<curVer){clearTimeout(curTimer);await flushCur()}
+    await sb.auth.signOut();
+  }
+  if(e.target.id==='signInBtn'){store(GUEST_FLAG,false);showAuth('signin')}
+});
+
+/* sync of the game in progress (debounced) */
+let curTimer=null, curVer=0, curSaved=0, lastCurAt=null, syncState='';
+function setSync(s){syncState=s;const el=$('#syncSt');if(!el)return;el.textContent={saving:'Saving…',saved:'Saved',error:'Not saved yet, retrying'}[s]||'';el.className='syncst '+s}
+function pushCur(){if(!user||!sb)return;curVer++;setSync('saving');clearTimeout(curTimer);curTimer=setTimeout(flushCur,800)}
+async function flushCur(){
+  if(!user||!sb)return;
+  const v=curVer, uidNow=user.id;
+  try{
+    const {data,error}=await sb.from('current_games').upsert({user_id:uidNow,data:state,updated_at:new Date().toISOString()}).select('updated_at').single();
+    if(error)throw error;
+    if(!user||user.id!==uidNow)return;
+    lastCurAt=data.updated_at; curSaved=Math.max(curSaved,v); setSync(curSaved<curVer?'saving':'saved');
+  }catch(err){setSync('error');clearTimeout(curTimer);curTimer=setTimeout(flushCur,5000)}
+}
+async function cloudSaveGames(games){
+  if(!user||!sb||!games.length)return true;
+  const now=new Date().toISOString();
+  const {error}=await sb.from('games').upsert(games.map(g=>({user_id:user.id,id:g.id,data:g,updated_at:now})));
+  if(error){toast('Could not save to your account. Check your connection and try again.');return false}
+  return true;
+}
+async function cloudDeleteGame(id){
+  if(!user||!sb)return;
+  const {error}=await sb.from('games').delete().eq('user_id',user.id).eq('id',id);
+  if(error)toast('Could not delete it from your account. Try again.');
+}
+async function pullAll(){
+  const [cur,hist]=await Promise.all([
+    sb.from('current_games').select('data,updated_at').eq('user_id',user.id).maybeSingle(),
+    sb.from('games').select('data').eq('user_id',user.id)
+  ]);
+  if(cur.error||hist.error)throw(cur.error||hist.error);
+  store(LS_HIST,hist.data.map(r=>r.data));
+  if(!cur.data)return 'none';
+  if(cur.data.updated_at!==lastCurAt&&curSaved>=curVer){
+    state=cur.data.data; lastCurAt=cur.data.updated_at; store(LS_CUR,state);
+    undoStack=[];resultsShown=false;resultsStale=false; return 'replaced';
+  }
+  return 'same';
+}
+async function onSignedIn(u){
+  if(user&&user.id===u.id)return;
+  user=u; guest=false; store(GUEST_FLAG,false); useNamespace(u);
+  curVer=0;curSaved=0;lastCurAt=null;
+  const hadCache=!!load(LS_CUR,null);
+  loadLocalState(); showApp(); switchTab('game'); renderAll(); setSync('saving');
+  try{
+    const r=await pullAll();
+    if(r==='none'){
+      if(!hadCache){const g=load(G_CUR,null); if(g&&g.players&&g.players.length){state=clone(g);state.id=uid()}}
+      saveCur();
+    }else setSync('saved');
+    renderAll(); renderHistory();
+    maybeOfferMigration();
+  }catch(err){setSync('error');toast("Couldn't reach your account. Showing what's saved on this device.")}
+}
+function onSignedOut(){
+  user=null; clearTimeout(curTimer); syncState='';
+  useNamespace(null); showAuth('signin');
+}
+function startGuest(){
+  user=null; guest=true; store(GUEST_FLAG,true); useNamespace(null);
+  loadLocalState(); showApp(); switchTab('game'); renderAll();
+}
+async function maybeOfferMigration(){
+  const flag='pokerly.'+user.id+'.migrated'; if(load(flag,false))return;
+  const have=new Set(getHist().map(g=>g.id));
+  const add=load(G_HIST,[]).filter(g=>g&&g.id&&!have.has(g.id));
+  if(!add.length){store(flag,true);return}
+  const ok=await askConfirm(`This browser has ${add.length} saved game${add.length===1?'':'s'} from before you signed in. Add ${add.length===1?'it':'them'} to your account?`,'Add to my account');
+  if(!ok){store(flag,true);return}
+  if(await cloudSaveGames(add)){store(flag,true);store(LS_HIST,getHist().concat(add));renderHistory();renderHistCount();toast(`Added ${add.length} game${add.length===1?'':'s'} to your account`)}
+}
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState!=='visible'||!user||!sb)return;
+  if(!$('#winModal').hidden||!$('#modal').hidden)return;
+  try{const r=await pullAll(); if(r==='replaced'){renderAll();toast('Updated with changes from your other device')} renderHistory(); renderHistCount()}catch(e){}
+});
+
+/* sign-in screen */
+const AUTH_TEXT={
+  signin:{sub:'Sign in to keep your games on every device.',btn:'Sign in'},
+  signup:{sub:'Create a free account to save your games.',btn:'Create account'},
+  reset:{sub:"Enter your email and we'll send you a link to reset your password.",btn:'Send reset link'},
+  newpass:{sub:'Choose a new password for your account.',btn:'Save new password'}
+};
+function showAuth(m){
+  aMode=m; $('#app').hidden=true; $('#authView').hidden=false;
+  $('#aSub').textContent=AUTH_TEXT[m].sub; $('#aSubmit').textContent=AUTH_TEXT[m].btn;
+  $$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.amode===m));
+  $('#aTabs').hidden=!(m==='signin'||m==='signup');
+  $('#aEmailWrap').hidden=m==='newpass';
+  $('#aPassWrap').hidden=m==='reset';
+  $('#aPass').autocomplete=m==='signin'?'current-password':'new-password';
+  $('#aForgot').hidden=m!=='signin'; $('#aBack').hidden=!(m==='reset');
+  $('#aOAuth').hidden=!(GOOGLE_ENABLED&&(m==='signin'||m==='signup'));
+  $('#aGuest').hidden=m==='newpass';
+  authMsg('');
+  (m==='newpass'?$('#aPass'):$('#aEmail')).focus();
+}
+function authMsg(t,ok){const el=$('#aMsg');el.hidden=!t;el.textContent=t;el.classList.toggle('ok',!!ok)}
+function friendly(err){
+  const m=(err&&err.message)||'';
+  if(/invalid login credentials/i.test(m))return 'Wrong email or password.';
+  if(/email not confirmed/i.test(m))return 'Please confirm your email first. Check your inbox for the link we sent.';
+  if(/already registered|already exists/i.test(m))return 'An account with this email already exists. Sign in instead.';
+  if(/rate limit|too many/i.test(m))return 'Too many tries. Wait a minute and try again.';
+  if(/password/i.test(m)&&/(6|characters|short|weak)/i.test(m))return 'Use a password with at least 6 characters.';
+  if(/fetch|network/i.test(m))return "Couldn't connect. Check your internet and try again.";
+  return m||'Something went wrong. Try again.';
+}
+$('#aTabs').addEventListener('click',e=>{const b=e.target.closest('[data-amode]');if(b)showAuth(b.dataset.amode)});
+$('#aForgot').onclick=()=>showAuth('reset');
+$('#aBack').onclick=()=>showAuth('signin');
+$('#aGuest').onclick=startGuest;
+$('#aGoogle').onclick=async()=>{
+  const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:SITE}});
+  if(error)authMsg(friendly(error));
+};
+$('#aForm').addEventListener('submit',async e=>{
+  e.preventDefault(); if(!sb)return authMsg("Accounts aren't available right now. Use the app without an account for now.");
+  const email=$('#aEmail').value.trim(), password=$('#aPass').value, btn=$('#aSubmit');
+  if(aMode!=='newpass'&&!/^\S+@\S+\.\S+$/.test(email))return authMsg('Enter a valid email address.');
+  if(aMode!=='reset'&&password.length<6)return authMsg('Use a password with at least 6 characters.');
+  btn.disabled=true; const label=btn.textContent; btn.textContent='Please wait…'; authMsg('');
+  try{
+    if(aMode==='signin'){
+      const {error}=await sb.auth.signInWithPassword({email,password}); if(error)throw error;
+    }else if(aMode==='signup'){
+      const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:SITE}}); if(error)throw error;
+      if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length)throw new Error('already registered');
+      if(!data.session){$('#aPass').value='';authMsg(`Almost done. We sent a confirmation link to ${email}. Open it, then sign in here.`,true);showTabOnly('signin')}
+    }else if(aMode==='reset'){
+      const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE}); if(error)throw error;
+      authMsg('If an account exists for that email, a reset link is on its way. Check your inbox.',true);
+    }else if(aMode==='newpass'){
+      const {data,error}=await sb.auth.updateUser({password}); if(error)throw error;
+      recovering=false; history.replaceState(null,'',SITE); $('#aPass').value='';
+      toast('Password updated'); onSignedIn(data.user);
+    }
+  }catch(err){authMsg(friendly(err))}
+  finally{btn.disabled=false; btn.textContent=label}
+});
+function showTabOnly(m){aMode=m;$$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.amode===m));$('#aSubmit').textContent=AUTH_TEXT[m].btn;$('#aSub').textContent=AUTH_TEXT[m].sub;$('#aForgot').hidden=m!=='signin'}
+
+function initAuth(){
+  if(!sb){startGuest();toast("Accounts aren't available right now. Games are saved in this browser.");return}
+  let decided=false;
+  sb.auth.onAuthStateChange((ev,session)=>{
+    decided=true;
+    if(ev==='PASSWORD_RECOVERY'){recovering=true;showAuth('newpass');return}
+    if(recovering)return;
+    const u=session&&session.user;
+    if(u){if(!user||user.id!==u.id)setTimeout(()=>onSignedIn(u),0)}
+    else if(user)onSignedOut();
+    else if(ev==='INITIAL_SESSION'){load(GUEST_FLAG,false)?startGuest():showAuth('signin')}
+  });
+  setTimeout(()=>{if(!decided&&!user&&!guest)load(GUEST_FLAG,false)?startGuest():showAuth('signin')},4000);
+}
+initAuth();
 </script>
