@@ -25,7 +25,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-
 .tabs button.on{background:var(--felt);color:var(--felt-ink)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px;margin-bottom:16px}
 .meta{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
-label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+label.f,div.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 input.t{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-width:0}
 input.t:focus,.cell input:focus,.pname:focus{outline:2px solid var(--felt);outline-offset:-1px;border-color:transparent}
 .players{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
@@ -165,6 +165,27 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .aor{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
 .aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
 html,body{height:100%}
+.pw{position:relative;display:block}
+.fhint{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--muted)}
+.mbox h3{margin:0;font-size:18px}
+.mbox>.sub{margin:-8px 0 0;color:var(--muted);font-size:13px}
+#pidInput{font-size:16px;padding:10px 12px}
+.pidchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted);white-space:nowrap}
+.pidchip b{color:var(--ink);font-weight:700}
+.pw input.t{width:100%;padding-right:46px}
+.eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);width:38px;height:34px;border-radius:6px;cursor:pointer;display:grid;place-items:center}
+.eye:hover{color:var(--ink);background:var(--line)}
+.eye:focus-visible{outline:2px solid var(--felt);outline-offset:-2px}
+.eye .i-hide{display:none}.eye[aria-pressed="true"] .i-show{display:none}.eye[aria-pressed="true"] .i-hide{display:block}
+.pwtools{display:flex;justify-content:space-between;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-weight:500}
+.alink.sm{font-size:13px;padding:2px 0;align-self:auto}
+.strength{font-size:12px;font-weight:600}
+.pwrules{list-style:none;margin:2px 0 0;padding:10px 12px;border-radius:8px;background:var(--bg);display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px 14px;text-transform:none;letter-spacing:0;font-weight:500;font-size:13px;color:var(--muted)}
+.pwrules li{display:flex;align-items:center;gap:8px;transition:color .15s}
+.pwrules li::before{content:"";flex:0 0 14px;height:14px;border-radius:50%;border:1.5px solid var(--line);box-sizing:border-box;transition:.15s}
+.pwrules li.ok{color:var(--pos)}
+.pwrules li.ok::before{border-color:var(--pos);background:var(--pos) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3.5 7.2l2.3 2.3 4.7-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat}
+.strength.weak{color:var(--neg)}.strength.okay{color:var(--warn-ink)}.strength.strong{color:var(--pos)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/dist/umd/supabase.js"></script>
@@ -174,15 +195,29 @@ html,body{height:100%}
     <p class="authsub" id="aSub"></p>
     <div class="seg aseg" id="aTabs"><button type="button" data-amode="signin">Sign in</button><button type="button" data-amode="signup">Create account</button></div>
     <form id="aForm" novalidate>
-      <label class="f" id="aEmailWrap">Email<input class="t" id="aEmail" type="email" autocomplete="email" required></label>
-      <label class="f" id="aPassWrap">Password<input class="t" id="aPass" type="password" autocomplete="current-password" required></label>
+      <label class="f" id="aEmailWrap"><span id="aEmailLbl">Email</span><input class="t" id="aEmail" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" required></label>
+      <label class="f" id="aPidWrap">Player ID<input class="t" id="aPid" autocomplete="username" maxlength="20" autocapitalize="off" spellcheck="false"><span class="fhint">3–20 letters, numbers or _. You can sign in with this instead of your email.</span></label>
+      <div class="f" id="aPassWrap"><label for="aPass">Password</label>
+        <span class="pw"><input class="t" id="aPass" type="password" autocomplete="current-password" required><button type="button" class="eye" data-eye="aPass" aria-label="Show password" aria-pressed="false"><svg class="i-show" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i-hide" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.3 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button></span>
+        <span class="pwtools" id="aPwTools"><button type="button" class="alink sm" id="aSuggest">Suggest a strong password</button><span class="strength" id="aStrength"></span></span>
+        <ul class="pwrules" id="aRules" aria-live="polite">
+          <li data-rule="len">At least 8 characters</li>
+          <li data-rule="up">An uppercase letter (A–Z)</li>
+          <li data-rule="low">A lowercase letter (a–z)</li>
+          <li data-rule="num">A number (0–9)</li>
+          <li data-rule="sym">A symbol (like ! @ # $)</li>
+        </ul>
+      </div>
+      <div class="f" id="aPass2Wrap"><label for="aPass2">Confirm password</label>
+        <span class="pw"><input class="t" id="aPass2" type="password" autocomplete="new-password"><button type="button" class="eye" data-eye="aPass2" aria-label="Show password" aria-pressed="false"><svg class="i-show" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i-hide" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.3 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button></span>
+      </div>
       <p class="amsg" id="aMsg" hidden></p>
       <button class="btn primary ablock" id="aSubmit" type="submit">Sign in</button>
     </form>
     <button class="alink" id="aForgot" type="button">Forgot password?</button>
     <button class="alink" id="aBack" type="button" hidden>← Back to sign in</button>
     <div id="aOAuth" hidden><div class="aor">or</div><button class="btn ablock" id="aGoogle" type="button">Continue with Google</button></div>
-    <button class="alink muted" id="aGuest" type="button">Use without an account</button>
+    <button class="alink muted" id="aGuest" type="button">Continue as guest</button>
   </div>
 </div>
 <div class="wrap" id="app" hidden>
@@ -253,6 +288,13 @@ html,body{height:100%}
   <div class="wtotal" id="wTotal" hidden><span id="wTotLbl"></span><b id="wTotVal">0</b></div>
   <p class="werr" id="wErr" hidden></p>
   <div class="actions"><button class="btn" id="wBack" hidden>← Change winner</button><span class="spacer"></span><button class="btn" id="wCancel">Cancel</button><button class="btn primary" id="wAdd" hidden>Add to table</button></div>
+</div></div>
+<div class="modal" id="pidModal" hidden><div class="mbox" role="dialog" aria-modal="true" aria-labelledby="pidTitle">
+  <h3 id="pidTitle">Choose your Player ID</h3>
+  <p class="sub">You can sign in with your Player ID instead of your email. Use 3–20 letters, numbers or _.</p>
+  <input class="t" id="pidInput" maxlength="20" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="e.g. deek_7">
+  <p class="werr" id="pidErr" hidden></p>
+  <div class="actions"><span class="spacer"></span><button class="btn" id="pidLater">Later</button><button class="btn primary" id="pidSave">Save</button></div>
 </div></div>
 <div class="modal" id="modal" hidden><div class="mbox" role="dialog" aria-modal="true"><p id="mMsg"></p><textarea id="mText" hidden spellcheck="false"></textarea><div class="actions" id="mBtns"></div></div></div>
 
@@ -703,7 +745,8 @@ const SUPABASE_KEY='sb_publishable_zlmIwmfyVhv9W8ufsPBZdg_bRPzHcCF';
 const GOOGLE_ENABLED=false;   // turn on after Google is set up in Supabase
 const GUEST_FLAG='pokerly.guest';
 const SITE=location.origin+location.pathname;
-let sb=null, user=null, guest=false, recovering=false, aMode='signin';
+let sb=null, user=null, guest=false, recovering=false, aMode='signin', playerId=null;
+const PID_RE=/^[A-Za-z0-9_]{3,20}$/, EMAIL_RE=/^\S+@\S+\.\S+$/;
 try{if(window.supabase)sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)}catch(e){sb=null}
 
 function useNamespace(u){
@@ -718,8 +761,8 @@ function loadLocalState(){
 function showApp(){$('#authView').hidden=true;$('#app').hidden=false}
 function renderAcct(){
   const el=$('#acct'); if(!el)return;
-  if(user)el.innerHTML=`<span class="who" title="${esc(user.email||'')}">${esc(user.email||'Signed in')}</span><span class="syncst" id="syncSt"></span><button class="btn sm" id="signOut">Sign out</button>`;
-  else el.innerHTML=`<span class="who">Not signed in</span><button class="btn sm" id="signInBtn">Sign in</button>`;
+  if(user)el.innerHTML=(playerId?`<span class="pidchip" title="${esc(user.email||'')}">Player ID <b>${esc(playerId)}</b></span>`:`<button class="btn sm" id="setPid" title="${esc(user.email||'')}">Set Player ID</button>`)+`<span class="syncst" id="syncSt"></span><button class="btn sm" id="signOut">Sign out</button>`;
+  else el.innerHTML=`<span class="who">Guest</span><button class="btn sm" id="signInBtn">Sign in</button>`;
   $('#histNote').textContent=user?'Games are saved to your account and show up on any device where you sign in.':'Games are saved in this browser only. Sign in to keep them in an account, or copy a backup now and then.';
   setSync(syncState);
 }
@@ -730,6 +773,7 @@ document.addEventListener('click',async e=>{
     await sb.auth.signOut();
   }
   if(e.target.id==='signInBtn'){store(GUEST_FLAG,false);showAuth('signin')}
+  if(e.target.id==='setPid')askPlayerId();
 });
 
 /* sync of the game in progress (debounced) */
@@ -777,6 +821,7 @@ async function onSignedIn(u){
   user=u; guest=false; store(GUEST_FLAG,false); useNamespace(u);
   curVer=0;curSaved=0;lastCurAt=null;
   const hadCache=!!load(LS_CUR,null);
+  playerId=load('pokerly.'+u.id+'.pid',null);
   loadLocalState(); showApp(); switchTab('game'); renderAll(); setSync('saving');
   try{
     const r=await pullAll();
@@ -785,17 +830,39 @@ async function onSignedIn(u){
       saveCur();
     }else setSync('saved');
     renderAll(); renderHistory();
+    await loadProfile();
     maybeOfferMigration();
   }catch(err){setSync('error');toast("Couldn't reach your account. Showing what's saved on this device.")}
 }
 function onSignedOut(){
-  user=null; clearTimeout(curTimer); syncState='';
+  user=null; playerId=null; $('#pidModal').hidden=true; clearTimeout(curTimer); syncState='';
   useNamespace(null); showAuth('signin');
 }
 function startGuest(){
   user=null; guest=true; store(GUEST_FLAG,true); useNamespace(null);
   loadLocalState(); showApp(); switchTab('game'); renderAll();
 }
+async function loadProfile(){
+  const {data,error}=await sb.from('profiles').select('player_id').eq('user_id',user.id).maybeSingle();
+  if(error)return;
+  playerId=data?data.player_id:null; store('pokerly.'+user.id+'.pid',playerId); renderAcct();
+  if(!playerId)askPlayerId();
+}
+function askPlayerId(){
+  $('#pidErr').hidden=true; $('#pidInput').value=''; $('#pidModal').hidden=false; $('#pidInput').focus();
+}
+async function savePlayerId(){
+  const v=$('#pidInput').value.trim(), err=$('#pidErr'); err.hidden=true;
+  if(!PID_RE.test(v)){err.textContent='Use 3–20 letters, numbers or _ (no spaces).';err.hidden=false;return}
+  $('#pidSave').disabled=true;
+  const {error}=await sb.from('profiles').insert({user_id:user.id,player_id:v});
+  $('#pidSave').disabled=false;
+  if(error){err.textContent=error.code==='23505'?'That Player ID is taken. Try another one.':"Couldn't save it. Check your connection and try again.";err.hidden=false;return}
+  playerId=v; store('pokerly.'+user.id+'.pid',v); $('#pidModal').hidden=true; renderAcct(); toast(`Your Player ID is ${v}`);
+}
+$('#pidSave').onclick=savePlayerId;
+$('#pidLater').onclick=()=>{$('#pidModal').hidden=true};
+$('#pidInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePlayerId()}if(e.key==='Escape')$('#pidModal').hidden=true});
 async function maybeOfferMigration(){
   const flag='pokerly.'+user.id+'.migrated'; if(load(flag,false))return;
   const have=new Set(getHist().map(g=>g.id));
@@ -807,7 +874,7 @@ async function maybeOfferMigration(){
 }
 document.addEventListener('visibilitychange',async()=>{
   if(document.visibilityState!=='visible'||!user||!sb)return;
-  if(!$('#winModal').hidden||!$('#modal').hidden)return;
+  if(!$('#winModal').hidden||!$('#modal').hidden||!$('#pidModal').hidden)return;
   try{const r=await pullAll(); if(r==='replaced'){renderAll();toast('Updated with changes from your other device')} renderHistory(); renderHistCount()}catch(e){}
 });
 
@@ -824,6 +891,12 @@ function showAuth(m){
   $$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.amode===m));
   $('#aTabs').hidden=!(m==='signin'||m==='signup');
   $('#aEmailWrap').hidden=m==='newpass';
+  $('#aPidWrap').hidden=m!=='signup';
+  $('#aEmailLbl').textContent=m==='signin'?'Email or Player ID':'Email';
+  $('#aEmail').type=m==='signin'?'text':'email'; $('#aEmail').autocomplete=m==='signin'?'username':'email';
+  const isNew=m==='signup'||m==='newpass';
+  $('#aPass2Wrap').hidden=!isNew; $('#aPwTools').hidden=!isNew; $('#aRules').hidden=!isNew; $('#aPass2').value='';
+  ['aPass','aPass2'].forEach(id=>setEye(id,false)); showStrength();
   $('#aPassWrap').hidden=m==='reset';
   $('#aPass').autocomplete=m==='signin'?'current-password':'new-password';
   $('#aForgot').hidden=m!=='signin'; $('#aBack').hidden=!(m==='reset');
@@ -835,6 +908,8 @@ function showAuth(m){
 function authMsg(t,ok){const el=$('#aMsg');el.hidden=!t;el.textContent=t;el.classList.toggle('ok',!!ok)}
 function friendly(err){
   const m=(err&&err.message)||'';
+  if(/PID_LOGIN_FAILED/.test(m))return 'Wrong Player ID or password.';
+  if(/PID_TAKEN|database error saving new user/i.test(m))return 'That Player ID is taken. Try another one.';
   if(/invalid login credentials/i.test(m))return 'Wrong email or password.';
   if(/email not confirmed/i.test(m))return 'Please confirm your email first. Check your inbox for the link we sent.';
   if(/already registered|already exists/i.test(m))return 'An account with this email already exists. Sign in instead.';
@@ -854,16 +929,32 @@ $('#aGoogle').onclick=async()=>{
 $('#aForm').addEventListener('submit',async e=>{
   e.preventDefault(); if(!sb)return authMsg("Accounts aren't available right now. Use the app without an account for now.");
   const email=$('#aEmail').value.trim(), password=$('#aPass').value, btn=$('#aSubmit');
-  if(aMode!=='newpass'&&!/^\S+@\S+\.\S+$/.test(email))return authMsg('Enter a valid email address.');
-  if(aMode!=='reset'&&password.length<6)return authMsg('Use a password with at least 6 characters.');
+  const pid=$('#aPid').value.trim();
+  if(aMode==='signin'&&!email)return authMsg('Enter your email or Player ID.');
+  if(aMode==='signin'&&email.includes('@')&&!EMAIL_RE.test(email))return authMsg('Enter a valid email address.');
+  if((aMode==='signup'||aMode==='reset')&&!EMAIL_RE.test(email))return authMsg('Enter a valid email address.');
+  if(aMode==='signup'&&!PID_RE.test(pid))return authMsg('Your Player ID needs 3–20 letters, numbers or _ (no spaces).');
+  if(aMode==='signin'&&!password)return authMsg('Enter your password.');
+  if(aMode==='signup'||aMode==='newpass'){
+    const miss=missingRules(password);
+    if(miss.length){const names={len:'at least 8 characters',up:'an uppercase letter',low:'a lowercase letter',num:'a number',sym:'a symbol'};
+      return authMsg('Your password still needs '+miss.map(k=>names[k]).join(', ')+'.')}
+  }
+  if((aMode==='signup'||aMode==='newpass')&&password!==$('#aPass2').value)return authMsg("The passwords don't match. Type the same password in both boxes.");
   btn.disabled=true; const label=btn.textContent; btn.textContent='Please wait…'; authMsg('');
   try{
     if(aMode==='signin'){
-      const {error}=await sb.auth.signInWithPassword({email,password}); if(error)throw error;
+      let em=email;
+      if(!email.includes('@')){
+        const {data,error}=await sb.rpc('email_for_login',{pid:email,pw:password}); if(error)throw error;
+        if(!data)throw new Error('PID_LOGIN_FAILED'); em=data;
+      }
+      const {error}=await sb.auth.signInWithPassword({email:em,password}); if(error)throw error;
     }else if(aMode==='signup'){
-      const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:SITE}}); if(error)throw error;
+      const av=await sb.rpc('player_id_available',{pid}); if(av.error)throw av.error; if(av.data===false)throw new Error('PID_TAKEN');
+      const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:SITE,data:{player_id:pid}}}); if(error)throw error;
       if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length)throw new Error('already registered');
-      if(!data.session){$('#aPass').value='';authMsg(`Almost done. We sent a confirmation link to ${email}. Open it, then sign in here.`,true);showTabOnly('signin')}
+      if(!data.session){showAuth('signin');$('#aPass').value='';authMsg(`Almost done. We sent a confirmation link to ${email}. Open it, then sign in here with your email or Player ID.`,true)}
     }else if(aMode==='reset'){
       const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:SITE}); if(error)throw error;
       authMsg('If an account exists for that email, a reset link is on its way. Check your inbox.',true);
@@ -873,9 +964,45 @@ $('#aForm').addEventListener('submit',async e=>{
       toast('Password updated'); onSignedIn(data.user);
     }
   }catch(err){authMsg(friendly(err))}
-  finally{btn.disabled=false; btn.textContent=label}
+  finally{btn.disabled=false; btn.textContent=AUTH_TEXT[aMode].btn}
 });
-function showTabOnly(m){aMode=m;$$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.amode===m));$('#aSubmit').textContent=AUTH_TEXT[m].btn;$('#aSub').textContent=AUTH_TEXT[m].sub;$('#aForgot').hidden=m!=='signin'}
+function setEye(id,show){
+  const inp=document.getElementById(id), b=document.querySelector(`[data-eye="${id}"]`);
+  inp.type=show?'text':'password'; b.setAttribute('aria-pressed',String(show)); b.setAttribute('aria-label',show?'Hide password':'Show password');
+}
+$('#aForm').addEventListener('click',e=>{
+  const b=e.target.closest('[data-eye]'); if(!b)return;
+  const id=b.dataset.eye; setEye(id,document.getElementById(id).type==='password');
+});
+function genPassword(){
+  const sets=['ABCDEFGHJKLMNPQRSTUVWXYZ','abcdefghijkmnpqrstuvwxyz','23456789','!@#$%*?-_'], all=sets.join('');
+  const r=n=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n};
+  const chars=sets.map(x=>x[r(x.length)]); while(chars.length<16)chars.push(all[r(all.length)]);
+  for(let i=chars.length-1;i>0;i--){const j=r(i+1);[chars[i],chars[j]]=[chars[j],chars[i]]}
+  return chars.join('');
+}
+$('#aSuggest').onclick=()=>{
+  const pw=genPassword(); $('#aPass').value=pw; $('#aPass2').value=pw;
+  setEye('aPass',true); setEye('aPass2',true); showStrength();
+  copyText(pw);
+  authMsg('We filled in a strong password and copied it. Save it in your password manager or a note before you continue.',true);
+};
+const PW_RULES={len:p=>p.length>=8,up:p=>/[A-Z]/.test(p),low:p=>/[a-z]/.test(p),num:p=>/[0-9]/.test(p),sym:p=>/[^A-Za-z0-9]/.test(p)};
+const missingRules=p=>Object.keys(PW_RULES).filter(k=>!PW_RULES[k](p));
+function pwScore(p){
+  if(!p)return '';
+  const kinds=[/[a-z]/,/[A-Z]/,/\d/,/[^A-Za-z0-9]/].filter(r=>r.test(p)).length;
+  if(p.length<8||kinds<2)return 'weak';
+  if(p.length>=12&&kinds>=3)return 'strong';
+  return 'okay';
+}
+function showStrength(){
+  const pv=$('#aPass').value; $$('#aRules li').forEach(li=>li.classList.toggle('ok',PW_RULES[li.dataset.rule](pv)));
+  const sc=pwScore(pv), el=$('#aStrength');
+  el.className='strength '+sc; el.textContent=sc?{weak:'Weak',okay:'Okay',strong:'Strong'}[sc]:'';
+}
+$('#aPass').addEventListener('input',showStrength);
+function showTabOnly(m){aMode=m;$('#aPass2Wrap').hidden=true;$('#aPwTools').hidden=true;$('#aRules').hidden=true;$$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.amode===m));$('#aSubmit').textContent=AUTH_TEXT[m].btn;$('#aSub').textContent=AUTH_TEXT[m].sub;$('#aForgot').hidden=m!=='signin'}
 
 function initAuth(){
   if(!sb){startGuest();toast("Accounts aren't available right now. Games are saved in this browser.");return}
