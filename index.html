@@ -168,6 +168,8 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
 html,body{height:100%}
 .pw{position:relative;display:block}
+.editbar{background:var(--chip);color:var(--chip-ink);border:1px solid var(--felt);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px}
+a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .fhint.ok{color:var(--pos);font-weight:600}.fhint.bad{color:var(--neg);font-weight:600}
 .fhint{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--muted)}
 .mbox h3{margin:0;font-size:18px}
@@ -237,6 +239,7 @@ html,body{height:100%}
 
   <!-- GAME VIEW -->
   <section id="gameView">
+    <div class="editbar" id="editBar" hidden><span><b>Editing a saved game.</b> Changes save to History automatically. Your current game in the other tab isn't affected. Close this tab when you're done.</span></div>
     <div class="card">
       <div class="meta">
         <label class="f" style="flex:1;min-width:200px">Game name
@@ -304,6 +307,8 @@ html,body{height:100%}
 <script>
 const G_CUR='pokerSettle.current', G_HIST='pokerSettle.history', LS_MODE='pokerSettle.mode';
 let LS_CUR=G_CUR, LS_HIST=G_HIST;
+const EDIT_ID=location.hash.startsWith('#edit-')?decodeURIComponent(location.hash.slice(6)):null;
+let editMode=false, editTimer=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -352,7 +357,19 @@ function compute(g){
 }
 
 /* ---------- persistence ---------- */
-function saveCur(){store(LS_CUR,state);pushCur()}
+function saveCur(){if(editMode)return saveEdit();store(LS_CUR,state);pushCur()}
+function saveEdit(){
+  const h=getHist(), rec=clone(state); delete rec.dirty; rec.savedAt=new Date().toISOString();
+  const i=h.findIndex(g=>g.id===rec.id); if(i>=0)h[i]=rec; else h.push(rec);
+  store(LS_HIST,h); renderHistCount();
+  if(!user)return;
+  setSync('saving'); clearTimeout(editTimer);
+  editTimer=setTimeout(async()=>{setSync(await cloudSaveGames([rec])?'saved':'error')},800);
+}
+function applyEditMode(){
+  $('#editBar').hidden=!editMode; $('#newGame').hidden=editMode; $('#saveHist').hidden=editMode;
+  document.title=editMode?`Editing ${state.name||'saved game'} · Pokerly`:'Pokerly';
+}
 function getHist(){return load(LS_HIST,[])}
 function changed(){
   state.dirty=true; saveCur();
@@ -486,7 +503,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ---------- meta ---------- */
-$('#gName').oninput=e=>{state.name=e.target.value;state.dirty=true;saveCur()};
+$('#gName').oninput=e=>{state.name=e.target.value;state.dirty=true;saveCur();if(editMode)applyEditMode()};
 $('#gDate').onchange=e=>{state.date=e.target.value;state.dirty=true;saveCur()};
 function renderMeta(){$('#gName').value=state.name||'';$('#gDate').value=state.date||'';$('#gMax').value=maxHand();showMaxD()}
 function showMaxD(){$('#gMaxD').textContent='cents = $'+(maxHand()/100).toFixed(2)}
@@ -583,7 +600,7 @@ function renderHistory(){
       <div class="pot">Pot<b>${fmt(pot(g))}</b></div></button>
       ${open?`<div class="hbody"><div class="reshead"><strong>Settlement <span class="unit">in dollars</span></strong>${segHTML()}</div>${settlementHTML(g)}
         <details><summary style="cursor:pointer;color:var(--muted);font-size:13px;margin-top:14px">Show grid totals</summary>${miniTable(g)}</details>
-        <div class="resfoot"><button class="btn" data-copy="${g.id}">Copy result</button><button class="btn" data-open="${g.id}">Open in editor</button><span style="flex:1"></span><button class="btn danger" data-del="${g.id}">Delete</button></div></div>`:''}
+        <div class="resfoot"><button class="btn" data-copy="${g.id}">Copy result</button><a class="btn" href="#edit-${encodeURIComponent(g.id)}" target="_blank" rel="noopener">Open in new tab ↗</a><span style="flex:1"></span><button class="btn danger" data-del="${g.id}">Delete</button></div></div>`:''}
     </article>`;
   }).join('');
 }
@@ -774,6 +791,10 @@ function useNamespace(u){
 }
 const starterPlayers=()=>['Player 1','Player 2','Player 3','Player 4'].map(n=>({id:uid(),name:n}));
 function loadLocalState(){
+  editMode=false;
+  if(EDIT_ID){const g=getHist().find(h=>h.id===EDIT_ID);
+    if(g){state=clone(g);editMode=true;undoStack=[];resultsShown=false;resultsStale=false;applyEditMode();return}}
+  applyEditMode();
   state=load(LS_CUR,null)||newGame(guest?['Dayal','Shri','Shash','Deek'].map(n=>({id:uid(),name:n})):starterPlayers(),load(LS_MAX,null));
   undoStack=[];resultsShown=false;resultsStale=false;
 }
@@ -829,7 +850,7 @@ async function pullAll(){
   if(cur.error||hist.error)throw(cur.error||hist.error);
   store(LS_HIST,hist.data.map(r=>r.data));
   if(!cur.data)return 'none';
-  if(cur.data.updated_at!==lastCurAt&&curSaved>=curVer){
+  if(!editMode&&cur.data.updated_at!==lastCurAt&&curSaved>=curVer){
     state=cur.data.data; lastCurAt=cur.data.updated_at; store(LS_CUR,state);
     undoStack=[];resultsShown=false;resultsStale=false; return 'replaced';
   }
@@ -844,10 +865,11 @@ async function onSignedIn(u){
   loadLocalState(); showApp(); switchTab('game'); renderAll(); setSync('saving');
   try{
     const r=await pullAll();
-    if(r==='none'){
+    if(EDIT_ID){const was=editMode; if(!was)loadLocalState(); if(!editMode)toast("That saved game wasn't found, so this is your current game.")}
+    if(r==='none'&&!editMode){
       if(!hadCache){const g=load(G_CUR,null); if(g&&g.players&&g.players.length){state=clone(g);state.id=uid()}}
       saveCur();
-    }else setSync('saved');
+    }else if(!editMode)setSync('saved');
     renderAll(); renderHistory();
     await loadProfile();
     maybeOfferMigration();
