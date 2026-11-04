@@ -122,6 +122,8 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .wplayers{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 .wplayers .btn{padding:16px 10px;font-size:16px}
 .wplayers .btn:hover{border-color:var(--felt);background:var(--chip);color:var(--chip-ink)}
+.wplayers .btn[aria-pressed="true"]{background:var(--felt);border-color:var(--felt);color:var(--felt-ink)}
+.wplayers .btn[aria-pressed="true"]::before{content:"✓ "}
 .wrows{display:flex;flex-direction:column}
 .wrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);min-width:0}
 .wrow:first-child{padding-top:4px}
@@ -166,6 +168,7 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
 html,body{height:100%}
 .pw{position:relative;display:block}
+.fhint.ok{color:var(--pos);font-weight:600}.fhint.bad{color:var(--neg);font-weight:600}
 .fhint{text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--muted)}
 .mbox h3{margin:0;font-size:18px}
 .mbox>.sub{margin:-8px 0 0;color:var(--muted);font-size:13px}
@@ -196,7 +199,7 @@ html,body{height:100%}
     <div class="seg aseg" id="aTabs"><button type="button" data-amode="signin">Sign in</button><button type="button" data-amode="signup">Create account</button></div>
     <form id="aForm" novalidate>
       <label class="f" id="aEmailWrap"><span id="aEmailLbl">Email</span><input class="t" id="aEmail" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" required></label>
-      <label class="f" id="aPidWrap">Player ID<input class="t" id="aPid" autocomplete="username" maxlength="20" autocapitalize="off" spellcheck="false"><span class="fhint">3–20 letters, numbers or _. You can sign in with this instead of your email.</span></label>
+      <label class="f" id="aPidWrap">Player ID<input class="t" id="aPid" autocomplete="username" maxlength="20" autocapitalize="off" spellcheck="false"><span class="fhint" id="aPidHint">3–20 letters, numbers or _. You can sign in with this instead of your email.</span></label>
       <div class="f" id="aPassWrap"><label for="aPass">Password</label>
         <span class="pw"><input class="t" id="aPass" type="password" autocomplete="current-password" required><button type="button" class="eye" data-eye="aPass" aria-label="Show password" aria-pressed="false"><svg class="i-show" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><svg class="i-hide" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.3 2 12 2 12s3.6 7 10 7a9.8 9.8 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button></span>
         <span class="pwtools" id="aPwTools"><button type="button" class="alink sm" id="aSuggest">Suggest a strong password</button><span class="strength" id="aStrength"></span></span>
@@ -253,7 +256,7 @@ html,body{height:100%}
     </div>
 
     <div class="card">
-      <p class="hint">After each hand, click <b>Winner</b>, pick who won, and enter what everyone else lost. It goes into the winner's column for you. Each cell is what the <b>row player owes the column player</b>, and you can still type into cells directly. Type an amount and press <kbd>Enter</kbd>: it's added and you jump to the cell below, then to the top of the next column. Press <kbd>Enter</kbd> on an empty cell to skip it, or <kbd>Shift</kbd>+<kbd>Enter</kbd> to go back up. You can also type <kbd>10+200+30</kbd> to add several at once. Click an amount to remove it. <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> undoes.</p>
+      <p class="hint">After each hand, click <b>Winner</b>, pick who won (or everyone who tied), and enter what everyone else lost. It goes into the winners' columns for you, split equally on a tie. Each cell is what the <b>row player owes the column player</b>, and you can still type into cells directly. Type an amount and press <kbd>Enter</kbd>: it's added and you jump to the cell below, then to the top of the next column. Press <kbd>Enter</kbd> on an empty cell to skip it, or <kbd>Shift</kbd>+<kbd>Enter</kbd> to go back up. You can also type <kbd>10+200+30</kbd> to add several at once. Click an amount to remove it. <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> undoes.</p>
       <div class="gridwrap"><table class="grid" id="grid"></table></div>
       <div class="actions" style="margin-top:14px">
         <button class="btn win" id="winnerBtn">♛ Winner</button>
@@ -287,7 +290,7 @@ html,body{height:100%}
   <div class="wrows" id="wRows" hidden></div>
   <div class="wtotal" id="wTotal" hidden><span id="wTotLbl"></span><b id="wTotVal">0</b></div>
   <p class="werr" id="wErr" hidden></p>
-  <div class="actions"><button class="btn" id="wBack" hidden>← Change winner</button><span class="spacer"></span><button class="btn" id="wCancel">Cancel</button><button class="btn primary" id="wAdd" hidden>Add to table</button></div>
+  <div class="actions"><button class="btn" id="wBack" hidden>← Change winners</button><span class="spacer"></span><button class="btn" id="wCancel">Cancel</button><button class="btn primary" id="wNext" hidden disabled>Next →</button><button class="btn primary" id="wAdd" hidden>Add to table</button></div>
 </div></div>
 <div class="modal" id="pidModal" hidden><div class="mbox" role="dialog" aria-modal="true" aria-labelledby="pidTitle">
   <h3 id="pidTitle">Choose your Player ID</h3>
@@ -636,26 +639,36 @@ $$('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
 const STEP=10;
 function maxHand(){return state.maxPerHand||DEFAULT_MAX}
 function points(){const m=maxHand(),out=[];for(let v=STEP;v<m;v+=STEP)out.push(v);out.push(m);return out}
-let winId=null;
-function openWinner(){
+let winIds=[];
+const joinNames=ids=>{const n=ids.map(id=>nameOf(state,id));return n.length<2?n.join(''):n.slice(0,-1).join(', ')+' and '+n[n.length-1]};
+function openWinner(keep){
   if(state.players.length<2)return toast('Add at least 2 players');
-  winId=null; $('#wErr').hidden=true;
-  $('#wTitle').textContent='Who won this hand?'; $('#wSub').textContent='';
-  $('#wPlayers').innerHTML=state.players.map(p=>`<button class="btn" data-win="${p.id}">${esc(p.name)}</button>`).join('');
-  $('#wPlayers').hidden=false; $('#wRows').hidden=true; $('#wTotal').hidden=true; $('#wBack').hidden=true; $('#wAdd').hidden=true;
-  $('#winModal').hidden=false; $('#wPlayers .btn').focus();
+  if(keep!==true)winIds=[];
+  $('#wErr').hidden=true;
+  $('#wTitle').textContent='Who won this hand?';
+  $('#wSub').textContent='Tap the winner. If it was a tie, tap every player who split the pot.';
+  $('#wPlayers').innerHTML=state.players.map(p=>`<button class="btn" data-win="${p.id}" aria-pressed="${winIds.includes(p.id)}">${esc(p.name)}</button>`).join('');
+  $('#wPlayers').hidden=false; $('#wRows').hidden=true; $('#wTotal').hidden=true; $('#wBack').hidden=true; $('#wAdd').hidden=true; $('#wNext').hidden=false;
+  syncWinPick(); $('#winModal').hidden=false; $('#wPlayers .btn').focus();
 }
-function pickWinner(id){
-  winId=id; const others=state.players.filter(p=>p.id!==id);
-  $('#wTitle').textContent=`${nameOf(state,id)} won`;
-  $('#wSub').textContent=`Tap how many points each player lost, in cents. Scroll each row sideways for more. Tap again to clear, and skip anyone who owes nothing.`;
+function syncWinPick(){
+  $$('#wPlayers [data-win]').forEach(b=>b.setAttribute('aria-pressed',String(winIds.includes(b.dataset.win))));
+  const n=winIds.length, all=n>=state.players.length;
+  $('#wNext').disabled=!n||all;
+  $('#wNext').textContent=n>1?`Next: ${n}-way split →`:'Next →';
+  $('#wErr').hidden=!all; if(all)$('#wErr').textContent='At least one player has to lose the hand.';
+}
+function pickWinners(){
+  if(!winIds.length||winIds.length>=state.players.length)return;
+  const others=state.players.filter(p=>!winIds.includes(p.id)), n=winIds.length;
+  $('#wTitle').textContent=n===1?`${joinNames(winIds)} won`:`${joinNames(winIds)} split the pot`;
+  $('#wSub').textContent=(n>1?`Each loser's points are split equally between the ${n} winners (in whole cents, so an odd cent goes to the first winner you picked). `:'')+'Tap how many points each player lost, in cents. Scroll each row sideways for more. Tap again to clear, and skip anyone who owes nothing.';
   $('#wRows').innerHTML=others.map(p=>`<div class="wrow">
     <div class="whead"><label id="l_${p.id}">${esc(p.name)}</label><b class="wval" data-val="w_${p.id}">—</b></div>
     <div class="prow" role="group" aria-labelledby="l_${p.id}">${pb(p.id,points()[0],'fix')}<div class="strip">${points().slice(1,-1).map(v=>pb(p.id,v,'')).join('')}</div>${pb(p.id,maxHand(),'fix')}</div>
     <input type="hidden" id="w_${p.id}" data-loser="${p.id}"></div>`).join('');
-  $('#wTotLbl').textContent=`${nameOf(state,id)} gets`;
-  $('#wPlayers').hidden=true; $('#wRows').hidden=false; $('#wTotal').hidden=false; $('#wBack').hidden=false; $('#wAdd').hidden=false;
-  updateWinTotal(); $('#wAdd').focus();
+  $('#wPlayers').hidden=true; $('#wNext').hidden=true; $('#wRows').hidden=false; $('#wTotal').hidden=false; $('#wBack').hidden=false; $('#wAdd').hidden=false;
+  $('#wErr').hidden=true; updateWinTotal(); $('#wAdd').focus();
 }
 function readWinRows(){
   let ok=true; const rows=[];
@@ -681,7 +694,9 @@ $('#wRows').addEventListener('wheel',e=>{
 function updateWinTotal(){
   syncStrips();
   const {ok,rows}=readWinRows();
-  $('#wTotVal').textContent=fmt(rows.reduce((s,r)=>s+r.n,0));
+  const tot=rows.reduce((s,r)=>s+r.n,0), n=winIds.length;
+  $('#wTotLbl').textContent=n===1?`${joinNames(winIds)} gets`:`Each winner gets (${fmt(tot)} total)`;
+  $('#wTotVal').textContent=(tot%n?'about ':'')+fmt(Math.round(tot/n*100)/100);
   $('#wErr').hidden=ok; if(!ok)$('#wErr').textContent=`Use a number from 1 to ${maxHand()}.`;
 }
 function addWinnerHand(){
@@ -689,19 +704,23 @@ function addWinnerHand(){
   if(!ok)return updateWinTotal();
   if(!rows.length){$('#wErr').hidden=false;$('#wErr').textContent='Enter at least one amount, or click Cancel.';return}
   const t=Date.now(), items=[];
-  rows.forEach(r=>{const k=key(r.loser,winId);(state.entries[k]||(state.entries[k]=[])).push({a:r.n,t});items.push({k,n:1});renderCell(k)});
+  const n=winIds.length;
+  rows.forEach(r=>{const base=Math.floor(r.n/n), rem=Math.round(r.n-base*n);
+    winIds.forEach((w,i)=>{const a=base+(i<rem?1:0); if(!a)return; const k=key(r.loser,w);(state.entries[k]||(state.entries[k]=[])).push({a,t});items.push({k,n:1});renderCell(k)})});
   undoStack.push({type:'batch',items});
   closeWinner(); changed();
-  toast(`Added: ${nameOf(state,winId)} won ${fmt(rows.reduce((s,r)=>s+r.n,0))}`);
+  const tot=rows.reduce((s,r)=>s+r.n,0);
+  toast(n===1?`Added: ${joinNames(winIds)} won ${fmt(tot)}`:`Added: ${joinNames(winIds)} split ${fmt(tot)}`);
 }
 function closeWinner(){$('#winModal').hidden=true;$('#winnerBtn').focus()}
 $('#winnerBtn').onclick=openWinner;
 $('#wCancel').onclick=closeWinner;
-$('#wBack').onclick=openWinner;
+$('#wBack').onclick=()=>openWinner(true);
+$('#wNext').onclick=pickWinners;
 $('#wAdd').onclick=addWinnerHand;
 $('#winModal').addEventListener('click',e=>{
   if(e.target.id==='winModal')return closeWinner();
-  const w=e.target.closest('[data-win]'); if(w)return pickWinner(w.dataset.win);
+  const w=e.target.closest('[data-win]'); if(w){const id=w.dataset.win;winIds=winIds.includes(id)?winIds.filter(x=>x!==id):winIds.concat(id);return syncWinPick()}
   const c=e.target.closest('[data-for]');
   if(c){const inp=document.getElementById(c.dataset.for);
     inp.value=inp.value===c.dataset.v?'':c.dataset.v; updateWinTotal()}
@@ -857,7 +876,7 @@ async function savePlayerId(){
   $('#pidSave').disabled=true;
   const {error}=await sb.from('profiles').insert({user_id:user.id,player_id:v});
   $('#pidSave').disabled=false;
-  if(error){err.textContent=error.code==='23505'?'That Player ID is taken. Try another one.':"Couldn't save it. Check your connection and try again.";err.hidden=false;return}
+  if(error){err.textContent=error.code==='23505'?'That Player ID has already been taken. Try another one.':"Couldn't save it. Check your connection and try again.";err.hidden=false;return}
   playerId=v; store('pokerly.'+user.id+'.pid',v); $('#pidModal').hidden=true; renderAcct(); toast(`Your Player ID is ${v}`);
 }
 $('#pidSave').onclick=savePlayerId;
@@ -891,7 +910,7 @@ function showAuth(m){
   $$('#aTabs button').forEach(b=>b.classList.toggle('on',b.dataset.amode===m));
   $('#aTabs').hidden=!(m==='signin'||m==='signup');
   $('#aEmailWrap').hidden=m==='newpass';
-  $('#aPidWrap').hidden=m!=='signup';
+  $('#aPidWrap').hidden=m!=='signup'; if(m==='signup'&&!$('#aPid').value)pidHint(PID_HINT);
   $('#aEmailLbl').textContent=m==='signin'?'Email or Player ID':'Email';
   $('#aEmail').type=m==='signin'?'text':'email'; $('#aEmail').autocomplete=m==='signin'?'username':'email';
   const isNew=m==='signup'||m==='newpass';
@@ -909,15 +928,31 @@ function authMsg(t,ok){const el=$('#aMsg');el.hidden=!t;el.textContent=t;el.clas
 function friendly(err){
   const m=(err&&err.message)||'';
   if(/PID_LOGIN_FAILED/.test(m))return 'Wrong Player ID or password.';
-  if(/PID_TAKEN|database error saving new user/i.test(m))return 'That Player ID is taken. Try another one.';
+  if(/PID_TAKEN|database error saving new user/i.test(m))return 'That Player ID has already been taken. Try another one.';
   if(/invalid login credentials/i.test(m))return 'Wrong email or password.';
   if(/email not confirmed/i.test(m))return 'Please confirm your email first. Check your inbox for the link we sent.';
-  if(/already registered|already exists/i.test(m))return 'An account with this email already exists. Sign in instead.';
+  if(/already registered|already exists/i.test(m))return 'This email has already been used for an account. Sign in instead, or use Forgot password.';
   if(/rate limit|too many/i.test(m))return 'Too many tries. Wait a minute and try again.';
   if(/password/i.test(m)&&/(6|characters|short|weak)/i.test(m))return 'Use a password with at least 6 characters.';
   if(/fetch|network/i.test(m))return "Couldn't connect. Check your internet and try again.";
   return m||'Something went wrong. Try again.';
 }
+const PID_HINT='3–20 letters, numbers or _. You can sign in with this instead of your email.';
+let pidTimer=null, pidSeq=0;
+function pidHint(t,cls){const h=$('#aPidHint');h.textContent=t;h.className='fhint'+(cls?' '+cls:'')}
+$('#aPid').addEventListener('input',()=>{
+  clearTimeout(pidTimer); const v=$('#aPid').value.trim(), seq=++pidSeq;
+  if(!v)return pidHint(PID_HINT);
+  if(!PID_RE.test(v))return pidHint('Use 3–20 letters, numbers or _ (no spaces).','bad');
+  pidHint('Checking…');
+  pidTimer=setTimeout(async()=>{
+    if(!sb)return;
+    const {data,error}=await sb.rpc('player_id_available',{pid:v});
+    if(seq!==pidSeq)return;
+    if(error)return pidHint(PID_HINT);
+    data?pidHint(`✓ ${v} is available`,'ok'):pidHint(`✗ ${v} has already been taken`,'bad');
+  },400);
+});
 $('#aTabs').addEventListener('click',e=>{const b=e.target.closest('[data-amode]');if(b)showAuth(b.dataset.amode)});
 $('#aForgot').onclick=()=>showAuth('reset');
 $('#aBack').onclick=()=>showAuth('signin');
