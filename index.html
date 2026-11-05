@@ -1,5 +1,6 @@
 <title>Pokerly</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script>try{var t=localStorage.getItem("pokerly.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>
 :root{
   --bg:#f3f0e8;--card:#ffffff;--ink:#1c2420;--muted:#6a716d;--line:#e3ddd0;
@@ -174,6 +175,30 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
 html,body{height:100%}
 .pw{position:relative;display:block}
+.hleft{display:flex;align-items:center;gap:14px}
+.menu{position:relative}
+.menubtn{width:40px;height:40px;border:1px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;padding:0}
+.menubtn span{display:block;width:18px;height:2px;border-radius:2px;background:var(--ink);transition:transform .2s,opacity .2s}
+.menubtn:hover{border-color:var(--muted)}
+.menubtn:focus-visible{outline:2px solid var(--felt);outline-offset:2px}
+.menu.open .menubtn span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.menu.open .menubtn span:nth-child(2){opacity:0}
+.menu.open .menubtn span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.menupanel{position:absolute;top:calc(100% + 10px);left:0;width:320px;max-width:calc(100vw - 32px);background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:6px;display:none;z-index:40}
+.menupanel::before{content:"";position:absolute;left:0;right:0;top:-12px;height:12px}
+.menu.open .menupanel{display:block}
+@media (hover:hover){.menu:hover .menupanel{display:block}}
+.menupanel section{padding:12px}
+.menupanel section+section{border-top:1px solid var(--line)}
+.menupanel h4{margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.arows{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:14px;margin:0}
+.arows dt{color:var(--muted)}
+.arows dd{margin:0;text-align:right;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aacts{display:flex;gap:8px;margin-top:14px}
+.aacts .btn{flex:1;white-space:nowrap;padding-inline:8px}
+.ahint{margin:0;font-size:13px;color:var(--muted)}
+.tseg{display:flex;width:100%}.tseg button{flex:1}
+.mhint{margin:8px 0 0;font-size:12px;color:var(--muted)}
 .resctl{display:flex;align-items:center;gap:10px}
 .xbtn{border:1px solid var(--line);background:var(--card);color:var(--muted);width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center}
 .xbtn:hover{color:var(--ink);border-color:var(--muted)}
@@ -237,7 +262,19 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 </div>
 <div class="wrap" id="app" hidden>
   <header class="top">
-    <div class="brand"><span class="suit">♠</span>Pokerly</div>
+    <div class="hleft">
+      <div class="menu" id="menu">
+        <button class="menubtn" id="menuBtn" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false" aria-controls="menuPanel"><span></span><span></span><span></span></button>
+        <div class="menupanel" id="menuPanel">
+          <section><h4>Account</h4><div id="acctInfo"></div></section>
+          <section><h4>Appearance</h4>
+            <div class="seg tseg" id="themeSeg" role="group" aria-label="Theme"><button type="button" data-theme-opt="system">System</button><button type="button" data-theme-opt="light">Light</button><button type="button" data-theme-opt="dark">Dark</button></div>
+            <p class="mhint">System follows your phone or computer's setting.</p>
+          </section>
+        </div>
+      </div>
+      <div class="brand"><span class="suit">♠</span>Pokerly</div>
+    </div>
     <div class="hright">
       <nav class="tabs">
         <button data-tab="game" class="on">Current game</button>
@@ -527,7 +564,7 @@ $('#gMax').addEventListener('change',e=>{
 function segHTML(){return `<div class="seg"><button data-mode="simplified" class="${mode==='simplified'?'on':''}">Simplified</button><button data-mode="pairwise" class="${mode==='pairwise'?'on':''}">Pairwise</button></div>`}
 function settlementHTML(g){
   const r=compute(g), N=id=>esc(nameOf(g,id));
-  const bals=g.players.map(p=>{const v=r.bal[p.id];return `<div class="bal ${v>0?'pos':v<0?'neg':''}"><span>${N(p.id)}</span><b>${v>0?'+':v<0?'−':''}${fmtC(Math.abs(v))}</b></div>`}).join('');
+  const bals=g.players.slice().sort((a,b)=>r.bal[a.id]-r.bal[b.id]).map(p=>{const v=r.bal[p.id];return `<div class="bal ${v>0?'pos':v<0?'neg':''}"><span>${N(p.id)}</span><b>${v>0?'+':v<0?'−':''}${fmtC(Math.abs(v))}</b></div>`}).join('');
   const nonzero=r.pairs.filter(p=>p.amt>0).length;
   let list, sum;
   if(mode==='simplified'){
@@ -792,6 +829,26 @@ function applyTotals(){$('.gridwrap').classList.toggle('no-totals',!showTotals);
 $('#toggleTotals').onclick=()=>{showTotals=!showTotals;store(LS_TOT,showTotals);applyTotals()};
 let toastT; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
 function renderAll(){renderAcct();applyTotals();renderMeta();renderPlayers();renderGrid();renderResults();renderHistCount();$('#undo').disabled=!undoStack.length}
+/* ---------- menu + theme ---------- */
+const THEME_KEY='pokerly.theme';
+function getTheme(){try{return localStorage.getItem(THEME_KEY)||'system'}catch(e){return 'system'}}
+function applyTheme(t){
+  if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);
+  else document.documentElement.removeAttribute('data-theme');
+  $$('[data-theme-opt]').forEach(b=>b.classList.toggle('on',b.dataset.themeOpt===t));
+}
+$('#themeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('[data-theme-opt]'); if(!b)return;
+  try{localStorage.setItem(THEME_KEY,b.dataset.themeOpt)}catch(err){}
+  applyTheme(b.dataset.themeOpt);
+});
+applyTheme(getTheme());
+function closeMenu(){$('#menu').classList.remove('open');$('#menuBtn').setAttribute('aria-expanded','false')}
+$('#menuBtn').addEventListener('click',()=>{const o=$('#menu').classList.toggle('open');$('#menuBtn').setAttribute('aria-expanded',String(o));if(o)renderAcctInfo()});
+$('#menu').addEventListener('mouseenter',renderAcctInfo);
+document.addEventListener('click',e=>{if(!e.target.closest('#menu'))closeMenu()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#menu').classList.contains('open')){closeMenu();$('#menuBtn').focus()}});
+
 /* ---------- accounts (Supabase) ---------- */
 const SUPABASE_URL='https://jjexawwthbpzcthddtkw.supabase.co';
 const SUPABASE_KEY='sb_publishable_zlmIwmfyVhv9W8ufsPBZdg_bRPzHcCF';
@@ -820,10 +877,35 @@ function renderAcct(){
   const el=$('#acct'); if(!el)return;
   if(user)el.innerHTML=(playerId?`<span class="pidchip" title="${esc(user.email||'')}">Player ID <b>${esc(playerId)}</b></span>`:`<button class="btn sm" id="setPid" title="${esc(user.email||'')}">Set Player ID</button>`)+`<span class="syncst" id="syncSt"></span><button class="btn sm" id="signOut">Sign out</button>`;
   else el.innerHTML=`<span class="who">Guest</span><button class="btn sm" id="signInBtn">Sign in</button>`;
+  renderAcctInfo();
   $('#histNote').textContent=user?'Games are saved to your account and show up on any device where you sign in.':'Games are saved in this browser only. Sign in to keep them in an account, or copy a backup now and then.';
   setSync(syncState);
 }
+function renderAcctInfo(){
+  const el=$('#acctInfo'); if(!el)return;
+  if(user){
+    const since=user.created_at?new Date(user.created_at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'—';
+    const prov=((user.app_metadata&&user.app_metadata.provider)||'email')==='google'?'Google':'Email & password';
+    el.innerHTML=`<dl class="arows">
+      <dt>Player ID</dt><dd>${playerId?esc(playerId):'<button class="alink sm" data-action="setpid">Set one</button>'}</dd>
+      <dt>Email</dt><dd title="${esc(user.email||'')}">${esc(user.email||'—')}</dd>
+      <dt>Signed in with</dt><dd>${prov}</dd>
+      <dt>Member since</dt><dd>${since}</dd>
+      <dt>Saved games</dt><dd>${getHist().length}</dd></dl>
+      <div class="aacts">${prov==='Google'?'':'<button class="btn sm" data-action="resetpw">Change password</button>'}<button class="btn sm" data-action="signout">Sign out</button></div>`;
+  }else{
+    el.innerHTML=`<p class="ahint">You're playing as a guest. Games are saved in this browser only.</p><div class="aacts"><button class="btn sm primary" data-action="signin">Sign in or create account</button></div>`;
+  }
+}
 document.addEventListener('click',async e=>{
+  const act=e.target.closest('[data-action]'); const a=act&&act.dataset.action;
+  if(a==='setpid'){closeMenu();askPlayerId();return}
+  if(a==='signin'){closeMenu();store(GUEST_FLAG,false);showAuth('signin');return}
+  if(a==='resetpw'){
+    act.disabled=true; const {error}=await sb.auth.resetPasswordForEmail(user.email,{redirectTo:SITE}); act.disabled=false;
+    toast(error?"Couldn't send the email. Try again.":`We sent a password reset link to ${user.email}`); return;
+  }
+  if(a==='signout'){closeMenu();if(curSaved<curVer){clearTimeout(curTimer);await flushCur()}await sb.auth.signOut();return}
   if(e.target.id==='signOut'){
     e.target.disabled=true;
     if(curSaved<curVer){clearTimeout(curTimer);await flushCur()}
