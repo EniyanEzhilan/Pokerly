@@ -168,6 +168,10 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
 html,body{height:100%}
 .pw{position:relative;display:block}
+.resctl{display:flex;align-items:center;gap:10px}
+.xbtn{border:1px solid var(--line);background:var(--card);color:var(--muted);width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.xbtn:hover{color:var(--ink);border-color:var(--muted)}
+.xbtn:focus-visible{outline:2px solid var(--felt);outline-offset:2px}
 .editbar{background:var(--chip);color:var(--chip-ink);border:1px solid var(--felt);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:14px}
 a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .fhint.ok{color:var(--pos);font-weight:600}.fhint.bad{color:var(--neg);font-weight:600}
@@ -229,11 +233,11 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
   <header class="top">
     <div class="brand"><span class="suit">♠</span>Pokerly</div>
     <div class="hright">
-      <div class="acct" id="acct"></div>
       <nav class="tabs">
         <button data-tab="game" class="on">Current game</button>
         <button data-tab="history">History <span id="histCount"></span></button>
       </nav>
+      <div class="acct" id="acct"></div>
     </div>
   </header>
 
@@ -542,11 +546,12 @@ function settlementText(g){
 function renderResults(){
   const el=$('#results'); if(!resultsShown){el.hidden=true;return}
   el.hidden=false;
-  el.innerHTML=`<div class="reshead"><h2>Settlement <span class="unit">in dollars</span></h2>${segHTML()}</div>
+  el.innerHTML=`<div class="reshead"><h2>Settlement <span class="unit">in dollars</span></h2><div class="resctl">${segHTML()}<button class="xbtn" id="closeResults" aria-label="Close settlement" title="Close">×</button></div></div>
     ${resultsStale?'<div class="stale">Entries changed since you calculated. Click <b>Calculate settlement</b> again to refresh.</div>':''}
     ${settlementHTML(state)}
     <div class="resfoot"><button class="btn" data-copy="cur">Copy result</button></div>`;
 }
+document.addEventListener('click',e=>{if(e.target.id==='closeResults'){resultsShown=false;resultsStale=false;renderResults();$('#calc').focus()}});
 $('#calc').onclick=()=>{
   if(state.players.length<2)return toast('Add at least 2 players');
   resultsShown=true; resultsStale=false; renderResults();
