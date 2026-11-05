@@ -91,7 +91,13 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .hcard{padding:0;overflow:hidden}
 .hhead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;width:100%;border:0;background:none;text-align:left}
 .hhead:hover{background:var(--bg)}
-.hhead h3{margin:0;font-size:16px}
+.hhead h3{margin:0;font-size:16px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.hinfo{min-width:0}
+.gname.unnamed{color:var(--muted);font-style:italic;font-weight:600}
+.gdate{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em;border:1px solid var(--line);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.gplayers{display:flex;flex-wrap:wrap;align-items:center;gap:2px 0}
+.gplayers .sep{margin:0 7px;opacity:.5}
+.pwin{color:var(--pos);font-weight:700}
 .hhead p{margin:2px 0 0;color:var(--muted);font-size:13px}
 .hhead .pot{text-align:right;font-size:13px;color:var(--muted);white-space:nowrap}
 .hhead .pot b{display:block;color:var(--ink);font-size:16px}
@@ -538,7 +544,7 @@ function settlementHTML(g){
 }
 function settlementText(g){
   const r=compute(g), N=id=>nameOf(g,id);
-  const head=`${g.name||'Poker game'} — ${g.date||''} (${mode==='simplified'?'simplified':'pairwise'})`;
+  const head=`${gameTitle(g)} — ${g.date||''} (${mode==='simplified'?'simplified':'pairwise'})`;
   const lines=mode==='simplified'?r.simp.filter(p=>p.amt).map(p=>`${N(p.from)} → ${N(p.to)}: ${fmtC(p.amt)}`)
     :r.pairs.filter(p=>p.amt).map(p=>`${N(p.from)} → ${N(p.to)}: ${fmtC(p.amt)}  (${fmtC(p.owed)} − ${fmtC(p.back)})`);
   return head+'\n'+(lines.length?lines.join('\n'):'Everyone is even.');
@@ -573,11 +579,10 @@ function copyText(t){
 $('#saveHist').onclick=()=>{
   if(!hasEntries(state))return toast('Nothing to save yet');
   const hist=getHist(), rec=clone(state); delete rec.dirty;
-  if(!rec.name)rec.name='Game on '+(rec.date||localDate());
   rec.savedAt=new Date().toISOString();
   const i=hist.findIndex(h=>h.id===rec.id);
   if(i>=0)hist[i]=rec; else hist.push(rec);
-  store(LS_HIST,hist); state.name=rec.name; state.dirty=false; saveCur(); renderMeta(); renderHistCount();
+  store(LS_HIST,hist); state.dirty=false; saveCur(); renderMeta(); renderHistCount();
   cloudSaveGames([rec]);
   toast(i>=0?'History updated':'Saved to history');
 };
@@ -589,6 +594,12 @@ $('#newGame').onclick=async()=>{
 };
 
 /* ---------- history ---------- */
+// Old saves were auto-named "Game on YYYY-MM-DD"; treat those as unnamed.
+function gameTitle(g){const n=(g.name||'').trim();return !n||/^Game on \d{4}-\d{2}-\d{2}$/.test(n)?'Unnamed Game':n}
+function topWinners(g){
+  const bal=compute(g).bal, max=Math.max(0,...Object.values(bal));
+  return max>0?new Set(Object.keys(bal).filter(id=>bal[id]===max)):new Set();
+}
 function renderHistCount(){const n=getHist().length;$('#histCount').textContent=n?`(${n})`:''}
 function miniTable(g){
   const ps=g.players;
@@ -601,7 +612,8 @@ function renderHistory(){
   el.innerHTML=hist.map(g=>{
     const open=openIds.has(g.id), d=g.date?new Date(g.date+'T12:00').toLocaleDateString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric'}):'';
     return `<article class="card hcard"><button class="hhead" data-toggle="${g.id}">
-      <div><h3>${esc(g.name||'Untitled game')}</h3><p>${d} · ${g.players.map(p=>esc(p.name)).join(', ')}</p></div>
+      <div class="hinfo"><h3><span class="gname${gameTitle(g)==='Unnamed Game'?' unnamed':''}">${esc(gameTitle(g))}</span>${d?`<span class="gdate">${d}</span>`:''}</h3>
+        <p class="gplayers">${(w=>g.players.map(p=>w.has(p.id)?`<span class="pwin" title="Biggest winner">${esc(p.name)}</span>`:`<span>${esc(p.name)}</span>`).join('<span class="sep">·</span>'))(topWinners(g))}</p></div>
       <div class="pot">Pot<b>${fmt(pot(g))}</b></div></button>
       ${open?`<div class="hbody"><div class="reshead"><strong>Settlement <span class="unit">in dollars</span></strong>${segHTML()}</div>${settlementHTML(g)}
         <details><summary style="cursor:pointer;color:var(--muted);font-size:13px;margin-top:14px">Show grid totals</summary>${miniTable(g)}</details>
@@ -622,7 +634,7 @@ $('#hlist').addEventListener('click',async e=>{
   const d=e.target.closest('[data-del]');
   if(d){
     const g=getHist().find(h=>h.id===d.dataset.del);
-    if(!(await askConfirm(`Delete "${g.name}" from history? This can't be undone.`,'Delete',true)))return;
+    if(!(await askConfirm(`Delete "${gameTitle(g)}" from history? This can't be undone.`,'Delete',true)))return;
     store(LS_HIST,getHist().filter(h=>h.id!==g.id)); renderHistory(); renderHistCount(); cloudDeleteGame(g.id);
   }
 });
