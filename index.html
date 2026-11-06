@@ -6,11 +6,11 @@
   --bg:#f3f0e8;--card:#ffffff;--ink:#1c2420;--muted:#6a716d;--line:#e3ddd0;
   --felt:#1e6a48;--felt-2:#174f37;--felt-ink:#fff;--chip:#e9f2ec;--chip-ink:#1e5a3e;
   --pos:#1d7a4c;--neg:#b23a2f;--diag:#f1ede4;--shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04);
-  --warn-bg:#fff4d6;--warn-ink:#7a5a00;--overlay:rgba(20,28,24,.45);
+  --warn-bg:#fff4d6;--warn-ink:#7a5a00;--overlay:rgba(20,28,24,.45);--gold:#a87700;
 }
-:root[data-theme="dark"]{color-scheme:dark;--warn-bg:#3a3115;--warn-ink:#f0d78a;--overlay:rgba(0,0,0,.6);--bg:#121614;--card:#1b211e;--ink:#e6ebe8;--muted:#98a29d;--line:#2c3430;--felt:#2f8a62;--felt-2:#25704f;--chip:#22352b;--chip-ink:#9fd8b9;--pos:#4fc58a;--neg:#ef7b6f;--diag:#161b18;--shadow:0 1px 2px rgba(0,0,0,.3)}
+:root[data-theme="dark"]{color-scheme:dark;--gold:#f2c94c;--warn-bg:#3a3115;--warn-ink:#f0d78a;--overlay:rgba(0,0,0,.6);--bg:#121614;--card:#1b211e;--ink:#e6ebe8;--muted:#98a29d;--line:#2c3430;--felt:#2f8a62;--felt-2:#25704f;--chip:#22352b;--chip-ink:#9fd8b9;--pos:#4fc58a;--neg:#ef7b6f;--diag:#161b18;--shadow:0 1px 2px rgba(0,0,0,.3)}
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){color-scheme:dark;--warn-bg:#3a3115;--warn-ink:#f0d78a;--overlay:rgba(0,0,0,.6);--bg:#121614;--card:#1b211e;--ink:#e6ebe8;--muted:#98a29d;--line:#2c3430;
+  :root:not([data-theme="light"]){color-scheme:dark;--gold:#f2c94c;--warn-bg:#3a3115;--warn-ink:#f0d78a;--overlay:rgba(0,0,0,.6);--bg:#121614;--card:#1b211e;--ink:#e6ebe8;--muted:#98a29d;--line:#2c3430;
     --felt:#2f8a62;--felt-2:#25704f;--chip:#22352b;--chip-ink:#9fd8b9;--pos:#4fc58a;--neg:#ef7b6f;--diag:#161b18;
     --shadow:0 1px 2px rgba(0,0,0,.3)}
 }
@@ -175,6 +175,11 @@ table.grid{border-collapse:collapse;width:100%;min-width:640px;table-layout:fixe
 .aor::before,.aor::after{content:"";flex:1;height:1px;background:var(--line)}
 html,body{height:100%}
 .pw{position:relative;display:block}
+.money{color:var(--gold);font-weight:700}
+.lockhint{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);margin-left:6px}
+input.t.locked{opacity:.75;cursor:not-allowed}
+.btn.saved{color:var(--pos);border-color:var(--pos);background:transparent}
+.pending{font-size:11px;font-style:italic;opacity:.8;margin-left:4px}
 .hleft{display:flex;align-items:center;gap:14px}
 .menu{position:relative}
 .menubtn{width:40px;height:40px;border:1px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;padding:0}
@@ -297,7 +302,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
     <div class="editbar" id="editBar" hidden><span><b>Editing a saved game.</b> Changes save to History automatically. Your current game in the other tab isn't affected. Close this tab when you're done.</span></div>
     <div class="card">
       <div class="meta">
-        <label class="f" style="flex:1;min-width:200px">Game name
+        <label class="f" style="flex:1;min-width:200px"><span>Game name <span class="lockhint" id="gNameLock" hidden>🔒 Locked · saved to History</span></span>
           <input class="t" id="gName" placeholder="e.g. Friday night at Shri's">
         </label>
         <label class="f">Max per hand
@@ -422,15 +427,24 @@ function compute(g){
 }
 
 /* ---------- persistence ---------- */
-function saveCur(){if(editMode)return saveEdit();store(LS_CUR,state);pushCur()}
-function saveEdit(){
+// A game that has been saved to History keeps updating that same History entry automatically.
+const inHist=()=>editMode||getHist().some(g=>g.id===state.id);
+function saveCur(){
+  if(editMode)return saveEdit();
+  const saved=inHist(); if(saved)state.dirty=false;
+  store(LS_CUR,state); pushCur();
+  if(saved)writeHist();
+}
+function writeHist(){
   const h=getHist(), rec=clone(state); delete rec.dirty; rec.savedAt=new Date().toISOString();
   const i=h.findIndex(g=>g.id===rec.id); if(i>=0)h[i]=rec; else h.push(rec);
   store(LS_HIST,h); renderHistCount();
-  if(!user)return;
-  setSync('saving'); clearTimeout(editTimer);
-  editTimer=setTimeout(async()=>{setSync(await cloudSaveGames([rec])?'saved':'error')},800);
+  if(!user)return rec;
+  clearTimeout(editTimer);
+  editTimer=setTimeout(async()=>{const ok=await cloudSaveGames([rec]); if(editMode)setSync(ok?'saved':'error')},800);
+  return rec;
 }
+function saveEdit(){writeHist(); if(user)setSync('saving')}
 function applyEditMode(){
   $('#editBar').hidden=!editMode; $('#newGame').hidden=editMode; $('#saveHist').hidden=editMode;
   document.title=editMode?`Editing ${state.name||'saved game'} · Pokerly`:'Pokerly';
@@ -569,13 +583,43 @@ document.addEventListener('keydown',e=>{
 
 /* ---------- meta ---------- */
 $('#gName').oninput=e=>{state.name=e.target.value;state.dirty=true;saveCur();if(editMode)applyEditMode()};
-function renderMeta(){$('#gName').value=state.name||'';$('#gMax').value=maxHand();showMaxD()}
-function showMaxD(){$('#gMaxD').textContent='cents = $'+(maxHand()/100).toFixed(2)}
-$('#gMax').addEventListener('change',e=>{
-  let v=Math.round((+e.target.value||0)/STEP)*STEP; v=Math.max(20,Math.min(5000,v));
-  state.maxPerHand=v; e.target.value=v; store(LS_MAX,v); state.dirty=true; saveCur(); showMaxD();
-  toast(`Max per hand set to ${v} cents ($${(v/100).toFixed(2)})`);
-});
+function renderMeta(){
+  $('#gName').value=state.name||''; $('#gMax').value=maxHand(); showMaxD();
+  const locked=inHist(), n=$('#gName');
+  n.readOnly=locked; n.classList.toggle('locked',locked);
+  n.placeholder=locked?'Unnamed Game':"e.g. Friday night at Shri's";
+  n.title=locked?"Saved games keep their name":'';
+  $('#gNameLock').hidden=!locked;
+  const sb=$('#saveHist'); sb.textContent=locked?'✓ In History':'Save to history'; sb.classList.toggle('saved',locked);
+  sb.title=locked?'This game is in History and updates automatically':'';
+}
+function showMaxD(){$('#gMaxD').innerHTML='cents = <span class="money">$'+(maxHand()/100).toFixed(2)+'</span>'}
+const usd=c=>'$'+(c/100).toFixed(2);
+const normMax=x=>Math.max(20,Math.min(5000,Math.round((+x||0)/STEP)*STEP));
+let maxTimer=null, maxAsking=false;
+function previewMax(){
+  const raw=$('#gMax').value.trim(); if(!raw)return showMaxD();
+  const v=normMax(raw);
+  $('#gMaxD').innerHTML='cents = <span class="money">'+usd(v)+'</span>'+(v!==maxHand()?' <span class="pending">not saved yet</span>':'');
+}
+async function commitMax(fromBlur){
+  clearTimeout(maxTimer); if(maxAsking)return;
+  const el=$('#gMax'), old=maxHand(), raw=el.value.trim();
+  if(!raw){if(fromBlur){el.value=old;showMaxD()}return}
+  const v=normMax(raw);
+  if(v===old){el.value=old;showMaxD();return}
+  maxAsking=true;
+  const mid=hasEntries(state)?'\nThis game already has hands entered. Those amounts stay as they are; the new max applies to the next hands.':'';
+  const ok=await askConfirm(`Change max per hand from ${old} cents (${usd(old)}) to ${v} cents (${usd(v)})?${mid}`,'Change max');
+  maxAsking=false;
+  if(!ok){el.value=old;showMaxD();return}
+  state.maxPerHand=v; el.value=v; state.dirty=true; saveCur(); showMaxD();
+  toast(`Max per hand is now ${v} cents (${usd(v)})`);
+}
+// Arrows, typing and scrolling only preview; we ask once the user pauses, presses Enter, or leaves the box.
+$('#gMax').addEventListener('input',()=>{previewMax();clearTimeout(maxTimer);maxTimer=setTimeout(()=>commitMax(false),1500)});
+$('#gMax').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commitMax(false)}});
+$('#gMax').addEventListener('blur',()=>commitMax(true));
 
 /* ---------- results ---------- */
 function segHTML(){return `<div class="seg"><button data-mode="simplified" class="${mode==='simplified'?'on':''}">Simplified</button><button data-mode="pairwise" class="${mode==='pairwise'?'on':''}">Pairwise</button></div>`}
@@ -630,19 +674,23 @@ function copyText(t){
 }
 
 /* ---------- save / new ---------- */
-$('#saveHist').onclick=()=>{
-  if(!hasEntries(state))return toast('Nothing to save yet');
-  const hist=getHist(), rec=clone(state); delete rec.dirty;
-  rec.savedAt=new Date().toISOString();
-  const i=hist.findIndex(h=>h.id===rec.id);
-  if(i>=0)hist[i]=rec; else hist.push(rec);
-  store(LS_HIST,hist); state.dirty=false; saveCur(); renderMeta(); renderHistCount();
-  cloudSaveGames([rec]);
-  toast(i>=0?'History updated':'Saved to history');
+$('#saveHist').onclick=async()=>{
+  if(inHist())return toast('Already in History. Changes save there automatically.');
+  if(!hasEntries(state))return toast('Add at least one hand before saving');
+  const name=(state.name||'').trim();
+  if(!name){
+    const ok=await askConfirm("This game doesn't have a name yet. A game's name can't be changed once it's in History.\nSave it as \"Unnamed Game\", or go back and add a name?",'Save as Unnamed Game');
+    if(!ok){$('#gName').focus();return}
+  }else{
+    const ok=await askConfirm(`Save "${name}" to History?\nAfter saving, the name is locked. You can keep playing, and every change updates this same game in History automatically.`,'Save to history');
+    if(!ok)return;
+  }
+  state.dirty=false; const rec=writeHist(); store(LS_CUR,state); pushCur(); cloudSaveGames([rec]);
+  renderMeta(); toast('Saved to History. Changes now update it automatically.');
 };
 $('#newGame').onclick=async()=>{
   if(hasEntries(state)&&state.dirty&&!(await askConfirm('This game has changes that are not in history yet. Start a new game anyway?\nTip: click "Save to history" first.','Start new game',true)))return;
-  state=newGame(state.players.map(p=>({id:p.id,name:p.name})),maxHand());
+  state=newGame(state.players.map(p=>({id:p.id,name:p.name})),DEFAULT_MAX);
   undoStack=[];resultsShown=false;resultsStale=false;
   saveCur(); renderAll(); toast('New game started with the same players');
 };
@@ -689,7 +737,7 @@ $('#hlist').addEventListener('click',async e=>{
   if(d){
     const g=getHist().find(h=>h.id===d.dataset.del);
     if(!(await askConfirm(`Delete "${gameTitle(g)}" from history? This can't be undone.`,'Delete',true)))return;
-    store(LS_HIST,getHist().filter(h=>h.id!==g.id)); renderHistory(); renderHistCount(); cloudDeleteGame(g.id);
+    store(LS_HIST,getHist().filter(h=>h.id!==g.id)); renderHistory(); renderHistCount(); cloudDeleteGame(g.id); renderMeta();
   }
 });
 function importGames(raw){
@@ -890,7 +938,7 @@ function loadLocalState(){
   if(EDIT_ID){const g=getHist().find(h=>h.id===EDIT_ID);
     if(g){state=clone(g);editMode=true;undoStack=[];resultsShown=false;resultsStale=false;applyEditMode();return}}
   applyEditMode();
-  state=load(LS_CUR,null)||newGame(guest?['Dayal','Shri','Shash','Deek'].map(n=>({id:uid(),name:n})):starterPlayers(),load(LS_MAX,null));
+  state=load(LS_CUR,null)||newGame(guest?['Dayal','Shri','Shash','Deek'].map(n=>({id:uid(),name:n})):starterPlayers(),DEFAULT_MAX);
   undoStack=[];resultsShown=false;resultsStale=false;
 }
 function showApp(){$('#authView').hidden=true;$('#app').hidden=false}
