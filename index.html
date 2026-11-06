@@ -179,7 +179,9 @@ html,body{height:100%}
 .lockhint{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);margin-left:6px}
 input.t.locked{opacity:.75;cursor:not-allowed}
 .btn.saved{color:var(--pos);border-color:var(--pos);background:transparent}
-.pending{font-size:11px;font-style:italic;opacity:.8;margin-left:4px}
+.fhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.maxnote{text-transform:none;letter-spacing:0;font-weight:500;font-style:italic;color:var(--muted)}
+.maxd{display:inline-block;width:8.5em;font-variant-numeric:tabular-nums}
 .hleft{display:flex;align-items:center;gap:14px}
 .menu{position:relative}
 .menubtn{width:40px;height:40px;border:1px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;padding:0}
@@ -302,7 +304,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
     <div class="editbar" id="editBar" hidden><span><b>Editing a saved game.</b> Changes save to History automatically. Your current game in the other tab isn't affected. Close this tab when you're done.</span></div>
     <div class="card">
       <div class="meta">
-        <label class="f" style="flex:1;min-width:200px"><span>Game name <span class="lockhint" id="gNameLock" hidden>🔒 Locked · saved to History</span></span>
+        <label class="f" style="flex:1;min-width:200px"><span class="fhead"><span>Game name <span class="lockhint" id="gNameLock" hidden>🔒 Locked · saved to History</span></span><span class="maxnote" id="maxNote" aria-live="polite"></span></span>
           <input class="t" id="gName" placeholder="e.g. Friday night at Shri's">
         </label>
         <label class="f">Max per hand
@@ -593,14 +595,15 @@ function renderMeta(){
   const sb=$('#saveHist'); sb.textContent=locked?'✓ In History':'Save to history'; sb.classList.toggle('saved',locked);
   sb.title=locked?'This game is in History and updates automatically':'';
 }
-function showMaxD(){$('#gMaxD').innerHTML='cents = <span class="money">$'+(maxHand()/100).toFixed(2)+'</span>'}
+function showMaxD(){const mn=$('#maxNote');if(mn)mn.textContent='';$('#gMaxD').innerHTML='cents = <span class="money">$'+(maxHand()/100).toFixed(2)+'</span>'}
 const usd=c=>'$'+(c/100).toFixed(2);
 const normMax=x=>Math.max(20,Math.min(5000,Math.round((+x||0)/STEP)*STEP));
 let maxTimer=null, maxAsking=false;
 function previewMax(){
   const raw=$('#gMax').value.trim(); if(!raw)return showMaxD();
   const v=normMax(raw);
-  $('#gMaxD').innerHTML='cents = <span class="money">'+usd(v)+'</span>'+(v!==maxHand()?' <span class="pending">not saved yet</span>':'');
+  $('#gMaxD').innerHTML='cents = <span class="money">'+usd(v)+'</span>';
+  $('#maxNote').innerHTML=v!==maxHand()?`New max per hand: <span class="money">${usd(v)}</span> · not saved yet`:'';
 }
 async function commitMax(fromBlur){
   clearTimeout(maxTimer); if(maxAsking)return;
@@ -617,7 +620,7 @@ async function commitMax(fromBlur){
   toast(`Max per hand is now ${v} cents (${usd(v)})`);
 }
 // Arrows, typing and scrolling only preview; we ask once the user pauses, presses Enter, or leaves the box.
-$('#gMax').addEventListener('input',()=>{previewMax();clearTimeout(maxTimer);maxTimer=setTimeout(()=>commitMax(false),1500)});
+$('#gMax').addEventListener('input',()=>{previewMax();clearTimeout(maxTimer);maxTimer=setTimeout(()=>commitMax(false),2000)});
 $('#gMax').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commitMax(false)}});
 $('#gMax').addEventListener('blur',()=>commitMax(true));
 
